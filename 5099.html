@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- 移动端适配核心标签 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>507神秘力量 | 官方粉丝站</title>
+    <style>
+        /* 全局重置 & GPU加速优化 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            /* 开启硬件加速，动画丝滑 */
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
+
+        :root {
+            --bg-main: #030306;
+            --bg-card: #080810;
+            --border-dark: #1d1d2c;
+            --silver: #c2c9d8;
+            --red-main: #c31c39;
+            --red-light: rgba(195, 28, 57, 0.3);
+            --text-gray: #aaaaaa;
+            --transition-fast: 0.25s ease-out;
+            --transition-slow: 0.6s ease-in-out;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--silver);
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        /* 双层粒子画布 远景+近景，分层滚动更有空间感 */
+        #particleBg,
+        #starParticle {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        #starParticle {
+            z-index: -1;
+        }
+
+        /* 头部导航栏 粘性固定 */
+        header {
+            width: 100%;
+            padding: 16px 30px;
+            background: linear-gradient(to bottom, #050509 85%, transparent);
+            border-bottom: 1px solid var(--border-dark);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, var(--red-main), var(--silver));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            /* 文字流光动画 */
+            animation: textShine 6s linear infinite;
+        }
+
+        @keyframes textShine {
+            0% {
+                filter: brightness(1);
+            }
+
+            50% {
+                filter: brightness(1.3);
+            }
+
+            100% {
+                filter: brightness(1);
+            }
+        }
+
+        .nav-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--silver);
+            text-decoration: none;
+            font-size: 15px;
+            position: relative;
+            transition: var(--transition-fast);
+        }
+
+        .nav-link::after {
+            content: "";
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--red-main);
+            transition: var(--transition-fast);
+        }
+
+        .nav-link:hover {
+            color: var(--red-main);
+            text-shadow: 0 0 8px var(--red-light);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        /* 音频控制模块 */
+        .audio-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .music-btn {
+            padding: 7px 16px;
+            border: 1px solid var(--red-main);
+            background: transparent;
+            color: var(--red-main);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: var(--transition-fast);
+        }
+
+        .music-btn:hover {
+            background: var(--red-main);
+            color: #000;
+            box-shadow: 0 0 14px var(--red-light);
+        }
+
+        .volume-slider {
+            width: 70px;
+            accent-color: var(--red-main);
+        }
+
+        /* 主体容器 自适应宽度 */
+        main {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 50px 24px;
+        }
+
+        /* 页面切换淡入动画 */
+        .page-box {
+            display: none;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .page-box.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .title-block {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .main-title {
+            font-size: clamp(32px, 5vw, 48px);
+            letter-spacing: 6px;
+            margin-bottom: 10px;
+        }
+
+        .sub-title {
+            color: var(--text-gray);
+            font-size: clamp(16px, 2vw, 18px);
+            letter-spacing: 2px;
+        }
+
+        /* 成员卡片网格 移动端自动换列 */
+        .member-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 28px;
+            margin-bottom: 70px;
+        }
+
+        @media (max-width: 1024px) {
+            .member-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 576px) {
+            .member-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .member-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 20px;
+            transition: var(--transition-slow);
+            perspective: 1200px;
+        }
+
+        .member-card:hover {
+            border-color: var(--red-light);
+            box-shadow: 0 0 36px rgba(195, 28, 57, 0.18);
+            transform: translateY(-10px) rotateY(4deg);
+        }
+
+        .card-img-wrap {
+            width: 100%;
+            height: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 18px;
+        }
+
+        .card-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.82) contrast(1.25);
+            /* 流畅环绕视差动画 */
+            animation: slowRotate 14s linear infinite alternate;
+        }
+
+        @keyframes slowRotate {
+            0% {
+                transform: scale(1) rotate(-1.5deg);
+            }
+
+            100% {
+                transform: scale(1.06) rotate(1.5deg);
+            }
+        }
+
+        .card-name {
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+
+        .card-tag {
+            color: var(--red-main);
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+
+        .card-desc {
+            color: var(--text-gray);
+            font-size: 14px;
+            line-height: 1.65;
+            margin-bottom: 22px;
+        }
+
+        .enter-link {
+            display: inline-block;
+            padding: 9px 24px;
+            background: linear-gradient(90deg, #7a1024, var(--red-main));
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: var(--transition-fast);
+        }
+
+        .enter-link:hover {
+            box-shadow: 0 0 18px var(--red-light);
+            letter-spacing: 1px;
+        }
+
+        /* 团体信息板块 列表+表格双栏 */
+        .info-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dark);
+            border-radius: 12px;
+            padding: 36px;
+            margin-bottom: 50px;
+        }
+
+        .panel-title {
+            font-size: 26px;
+            margin-bottom: 32px;
+            border-left: 4px solid var(--red-main);
+            padding-left: 14px;
+        }
+
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .list-title {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .dark-list {
+            list-style: none;
+        }
+
+        .dark-list li {
+            padding: 11px 0;
+            border-bottom: 1px solid var(--border-dark);
+            color: var(--text-gray);
+        }
+
+        .dark-list li::before {
+            content: "◆";
+            color: var(--red-main);
+            margin-right: 10px;
+        }
+
+        .dark-list a {
+            color: var(--red-main);
+            text-decoration: none;
+        }
+
+        .dark-list a:hover {
+            text-shadow: 0 0 6px var(--red-light);
+        }
+
+        /* 暗黑表格样式 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            border: 1px solid var(--border-dark);
+            padding: 14px 8px;
+            text-align: center;
+            color: var(--text-gray);
+        }
+
+        .data-table th {
+            background: #0c0c16;
+            color: var(--red-main);
+        }
+
+        .data-table tr:hover td {
+            background: #10101c;
+            transition: var(--transition-fast);
+        }
+
+        /* 成员独立子页面样式 */
+        .back-link {
+            color: var(--red-main);
+            text-decoration: none;
+            font-size: 16px;
+            margin-bottom: 30px;
+            display: inline-block;
+        }
+
+        .back-link:hover {
+            text-shadow: 0 0 8px var(--red-light);
+        }
+
+        .single-photo-box {
+            width: min(420px, 90%);
+            height: 540px;
+            margin: 0 auto 40px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .single-photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            animation: slowRotate 16s linear infinite alternate;
+        }
+
+        .exp-title {
+            margin: 32px 0 14px;
+            font-size: 20px;
+        }
+
+        .exp-order-list {
+            padding-left: 22px;
+            color: var(--text-gray);
+            line-height: 1.8;
+        }
+
+        .exp-order-list li {
+            margin: 8px 0;
+        }
+
+        /* 底部版权 */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid var(--border-dark);
+            color: #555;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 双层粒子背景 流畅特效 -->
+    <canvas id="particleBg"></canvas>
+    <canvas id="starParticle"></canvas>
+
+    <!-- 头部导航 -->
+    <header>
+        <div class="logo">507神秘力量</div>
+        <div class="nav-wrap">
+            <a href="#home" class="nav-link" target="_blank" onclick="switchPage('home')">首页</a>
+            <a href="#m1" target="_blank" class="nav-link" onclick="switchPage('m1')">辰烬</a>
+            <a href="#" class="nav-link" onclick="switchPage('m2')">夜枭</a>
+            <a href="#" class="nav-link" onclick="switchPage('m3')">墨辞</a>
+            <a href="#" class="nav-link" onclick="switchPage('m4')">玄野</a>
+            <div class="audio-control">
+                <button class="music-btn" id="audioToggle">播放BGM</button>
+                <input type="range" min="0" max="1" step="0.01" value="0.4" class="volume-slider" id="volumeCtrl">
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- 首页页面 -->
+        <div class="page-box active" id="home">
+            <div class="title-block">
+                <h1 class="main-title">507神秘力量 OFFICIAL SITE</h1>
+                <p class="sub-title">暗黑哥特叙事男团 · 诡秘舞台力量</p>
+            </div>
+
+            <!-- 4位成员卡片 -->
+            <div class="member-grid">
+                <!-- 辰烬 -->
+                <div class="member-card">
+                    <div class="card-img-wrap">
+                        <img src="302.jpeg" alt="辰烬">
+                    </div>
+                    <h3 class="card-name">辰烬</h3>
+                    <div class="card-tag">队长 / 主 Vocal</div>
+                    <p class="card-desc">团队核心高音担当，破碎阴郁舞台气质，负责全团舞台统筹，擅长压抑暗黑抒情曲目。</p>
+                    <a href="http://127.0.0.1:5500/5099.html#" class="enter-link" target="_blank"
+                        onclick="switchPage('m1')">进入个人主页</a>
+                </div>
+                <!-- 夜枭 -->
+                <div class="member-card">
+                    <div class="card-img-wrap">
+                        <img src="https://picsum.photos/id/1035/400/320" alt="夜枭">
+                    </div>
+                    <h3 class="card-name">夜枭</h3>
+                    <div class="card-tag">主舞 / 说唱</div>
+                    <p class="card-desc">力量型暗黑舞者，低音rap极具压迫感，独立完成团体大部分舞台编舞，性格冷感内敛。</p>
+                    <a href="#" class="enter-link" onclick="switchPage('m2')">进入个人主页</a>
+                </div>
+                <!-- 墨辞 -->
+                <div class="member-card">
+                    <div class="card-img-wrap">
+                        <img src="https://picsum.photos/id/1036/400/320" alt="墨辞">
+                    </div>
+                    <h3 class="card-name">墨辞</h3>
+                    <div class="card-tag">门面 / 副唱</div>
+                    <p class="card-desc">清冷破碎系视觉门面，国风暗黑适配度极高，镜头叙事感极强，杂志暗黑大片常驻模特。</p>
+                    <a href="#" class="enter-link" onclick="switchPage('m3')">进入个人主页</a>
+                </div>
+                <!-- 玄野 -->
+                <div class="member-card">
+                    <div class="card-img-wrap">
+                        <img src="https://picsum.photos/id/1037/400/320" alt="玄野">
+                    </div>
+                    <h3 class="card-name">玄野</h3>
+                    <div class="card-tag">队内制作人 / 创作</div>
+                    <p class="card-desc">全团词曲编曲制作人，深耕哥特悬疑曲风，所有出道专辑主打曲均由其独立创作制作。</p>
+                    <a href="#" class="enter-link" onclick="switchPage('m4')">进入个人主页</a>
+                </div>
+            </div>
+
+            <!-- 团体档案 列表+表格 -->
+            <div class="info-panel">
+                <h2 class="panel-title">团体档案</h2>
+                <div class="two-column">
+                    <div>
+                        <h3 class="list-title">基础信息</h3>
+                        <ul class="dark-list">
+                            <li>组合名称：507神秘力量</li>
+                            <li>出道日期：2026.05.07</li>
+                            <li>风格定位：暗黑哥特 / 悬疑叙事 / 国风暗黑</li>
+                            <li>粉丝名称：暗影信徒</li>
+                            <li>代表色系：墨黑、冷银、朱砂红</li>
+                            <li>官方渠道：<a href="#">微博超话</a> / <a href="#">B站官方账号</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="list-title">成员定位数据表</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>姓名</th>
+                                    <th>队内定位</th>
+                                    <th>核心技能</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>辰烬</td>
+                                    <td>队长、主唱</td>
+                                    <td>高音、舞台控场</td>
+                                </tr>
+                                <tr>
+                                    <td>夜枭</td>
+                                    <td>主舞、说唱</td>
+                                    <td>力量舞蹈、低音Rap</td>
+                                </tr>
+                                <tr>
+                                    <td>墨辞</td>
+                                    <td>门面、副唱</td>
+                                    <td>镜头表演、国风唱腔</td>
+                                </tr>
+                                <tr>
+                                    <td>玄野</td>
+                                    <td>音乐制作人</td>
+                                    <td>词曲、编曲制作</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 成员1 辰烬 子页面 -->
+        <div class="page-box" id="m1">
+            <a href="#" class="back-link" onclick="switchPage('home')">← 返回团体首页</a>
+            <div class="title-block">
+                <h1 class="main-title">辰烬 | 个人档案</h1>
+                <p class="sub-title">队长 · 主 Vocal</p>
+            </div>
+            <div class="single-photo-box">
+                <img src="303.jpeg" alt="辰烬写真">
+            </div>
+            <div class="info-panel">
+                <h2 class="panel-title">个人简介</h2>
+                <p style="color:var(--text-gray);line-height:1.8;">
+                    辰烬作为507神秘力量队长，拥有极具撕裂感的暗黑高音，擅长诠释压抑、救赎类叙事曲风。性格内敛温柔，舞台气场冷冽疏离，日常负责团队训练规划与成员心理疏导，是组合精神支柱。</p>
+                <h3 class="exp-title">完整演艺经历</h3>
+                <ol class="exp-order-list">
+                    <li>2024.03 签约娱乐公司，进入长期练习生体系</li>
+                    <li>2025.08 内部综合考核第一，确定为507预备队长</li>
+                    <li>2026.05.07 随团正式出道，主打曲《深渊回响》高音Solo全网出圈</li>
+                    <li>2026.06 单独演唱悬疑影视剧暗黑主题曲</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- 成员2 夜枭 子页面 -->
+        <div class="page-box" id="m2">
+            <a href="#" class="back-link" onclick="switchPage('home')">← 返回团体首页</a>
+            <div class="title-block">
+                <h1 class="main-title">夜枭 | 个人档案</h1>
+                <p class="sub-title">主舞 · 说唱担当</p>
+            </div>
+            <div class="single-photo-box">
+                <img src="https://picsum.photos/id/1035/420/540" alt="夜枭写真">
+            </div>
+            <div class="info-panel">
+                <h2 class="panel-title">个人简介</h2>
+                <p style="color:var(--text-gray);line-height:1.8;">
+                    夜枭是团队力量舞蹈核心，肢体线条锋利充满攻击性，低音Rap厚重有压迫感。舞台风格冷峻疏离，擅长暗黑炸裂舞台，私下沉默寡言，独立完成组合大部分舞台动作编排。</p>
+                <h3 class="exp-title">完整演艺经历</h3>
+                <ol class="exp-order-list">
+                    <li>2023.10 专业街舞生，地下暗黑编舞赛事全国冠军</li>
+                    <li>2025.01 签约公司，加入507预备成团组</li>
+                    <li>2026.05 出道独舞片段短视频平台百万播放</li>
+                    <li>2026.07 参与团体多首歌曲Rap段落词曲创作</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- 成员3 墨辞 子页面 -->
+        <div class="page-box" id="m3">
+            <a href="#" class="back-link" onclick="switchPage('home')">← 返回团体首页</a>
+            <div class="title-block">
+                <h1 class="main-title">墨辞 | 个人档案</h1>
+                <p class="sub-title">门面 · 副唱</p>
+            </div>
+            <div class="single-photo-box">
+                <img src="https://picsum.photos/id/1036/420/540" alt="墨辞写真">
+            </div>
+            <div class="info-panel">
+                <h2 class="panel-title">个人简介</h2>
+                <p style="color:var(--text-gray);line-height:1.8;">
+                    墨辞清冷破碎系颜值担当，声线细腻柔软，擅长国风暗黑叙事舞台。镜头表现力极强，多家潮流杂志暗黑国风大片御用模特，擅长用眼神传递忧郁诡秘氛围。</p>
+                <h3 class="exp-title">完整演艺经历</h3>
+                <ol class="exp-order-list">
+                    <li>2024.06 平面模特出道，拍摄多组暗黑国风主题大片</li>
+                    <li>2025.05 通过声乐考核正式加入507预备组</li>
+                    <li>2026.05 出道MV核心视觉主角，出圈氛围感镜头爆火</li>
+                    <li>2026.06 单人登上一线潮流杂志封面</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- 成员4 玄野 子页面 -->
+        <div class="page-box" id="m4">
+            <a href="#" class="back-link" onclick="switchPage('home')">← 返回团体首页</a>
+            <div class="title-block">
+                <h1 class="main-title">玄野 | 个人档案</h1>
+                <p class="sub-title">队内制作人 · 创作担当</p>
+            </div>
+            <div class="single-photo-box">
+                <img src="https://picsum.photos/id/1037/420/540" alt="玄野写真">
+            </div>
+            <div class="info-panel">
+                <h2 class="panel-title">个人简介</h2>
+                <p style="color:var(--text-gray);line-height:1.8;">
+                    玄野是组合全部音乐内容创作者，精通哥特、悬疑、暗黑国风编曲，擅长用乐器营造压抑诡秘氛围感。性格理智安静，几乎包揽组合全部词曲、编曲、混音工作。</p>
+                <h3 class="exp-title">完整演艺经历</h3>
+                <ol class="exp-order-list">
+                    <li>2022 独立音乐人，发布多首小众暗黑哥特单曲</li>
+                    <li>2025.02 签约公司，担任507专属音乐制作人</li>
+                    <li>2026.05 独立完成出道整张专辑《五重暗影》词曲制作</li>
+                    <li>2026.07 筹备第二张暗黑概念EP创作</li>
+                </ol>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        © 2026 507神秘力量 官方粉丝站 | 暗黑男团独立官网
+    </footer>
+
+    <!-- 背景音乐 -->
+    <audio id="bgAudio" loop preload="auto">
+        <source src="kpop.mp3" type="audio/mpeg">
+
+
+        <script>
+            // ========== 1. 页面切换控制 ==========
+            const allPages = document.querySelectorAll(".page-box");
+            function switchPage(pageId) {
+                allPages.forEach(page => page.classList.remove("active"));
+                document.getElementById(pageId).classList.add("active");
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+
+            // ========== 2. 音频播放控制（音量滑块+播放暂停） ==========
+            const audio = document.getElementById("bgAudio");
+            const audioBtn = document.getElementById("audioToggle");
+            const volumeSlider = document.getElementById("volumeCtrl");
+            let audioPlaying = false;
+            audio.volume = volumeSlider.value;
+
+            volumeSlider.addEventListener("input", () => {
+                audio.volume = volumeSlider.value;
+            });
+
+            audioBtn.addEventListener("click", () => {
+                if (!audioPlaying) {
+                    audio.play().catch(() => { });
+                    audioBtn.innerText = "暂停BGM";
+                    audioPlaying = true;
+                } else {
+                    audio.pause();
+                    audioBtn.innerText = "播放BGM";
+                    audioPlaying = false;
+                }
+            });
+
+            // ========== 3. 双层流畅粒子特效（远景灰粒+近景星光） ==========
+            // 画布初始化
+            const canvasBg = document.getElementById("particleBg");
+            const ctxBg = canvasBg.getContext("2d");
+            const canvasStar = document.getElementById("starParticle");
+            const ctxStar = canvasStar.getContext("2d");
+            let winW, winH;
+            let bgParticles = [];
+            let starParticles = [];
+
+            // 自适应画布尺寸
+            function resizeCanvas() {
+                winW = window.innerWidth;
+                winH = window.innerHeight;
+                canvasBg.width = winW;
+                canvasBg.height = winH;
+                canvasStar.width = winW;
+                canvasStar.height = winH;
+            }
+            resizeCanvas();
+            window.addEventListener("resize", resizeCanvas);
+
+            // 远景静态粒子类
+            class BgParticle {
+                constructor() {
+                    this.x = Math.random() * winW;
+                    this.y = Math.random() * winH;
+                    this.r = Math.random() * 1.1 + 0.2;
+                    this.speedX = (Math.random() - 0.5) * 0.4;
+                    this.speedY = (Math.random() - 0.5) * 0.4;
+                    this.opacity = Math.random() * 0.3 + 0.08;
+                }
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if (this.x < 0 || this.x > winW) this.speedX *= -1;
+                    if (this.y < 0 || this.y > winH) this.speedY *= -1;
+                }
+                draw() {
+                    ctxBg.beginPath();
+                    ctxBg.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                    ctxBg.fillStyle = `rgba(180, 186, 200, ${this.opacity})`;
+                    ctxBg.fill();
+                }
+            }
+
+            // 近景流动星光粒子
+            class StarParticle {
+                constructor() {
+                    this.x = Math.random() * winW;
+                    this.y = Math.random() * winH;
+                    this.r = Math.random() * 1.5 + 0.4;
+                    this.speedX = (Math.random() - 0.5) * 0.8;
+                    this.speedY = (Math.random() - 0.5) * 0.8;
+                    this.opacity = Math.random() * 0.5 + 0.2;
+                    this.twinkle = Math.random() * 0.02;
+                }
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    this.opacity += this.twinkle;
+                    if (this.opacity > 0.6 || this.opacity < 0.1) this.twinkle *= -1;
+                    if (this.x < 0 || this.x > winW) this.speedX *= -1;
+                    if (this.y < 0 || this.y > winH) this.speedY *= -1;
+                }
+                draw() {
+                    ctxStar.beginPath();
+                    ctxStar.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                    ctxStar.fillStyle = `rgba(220, 228, 240, ${this.opacity})`;
+                    ctxStar.fill();
+                }
+            }
+
+            // 批量生成粒子
+            function createParticles() {
+                bgParticles = [];
+                starParticles = [];
+                for (let i = 0; i < 160; i++) bgParticles.push(new BgParticle());
+                for (let i = 0; i < 60; i++) starParticles.push(new StarParticle());
+            }
+            createParticles();
+
+            // 流畅动画循环 requestAnimationFrame 60帧稳定渲染
+            function renderLoop() {
+                ctxBg.clearRect(0, 0, winW, winH);
+                ctxStar.clearRect(0, 0, winW, winH);
+                bgParticles.forEach(p => { p.update(); p.draw(); });
+                starParticles.forEach(p => { p.update(); p.draw(); });
+                requestAnimationFrame(renderLoop);
+            }
+            renderLoop();
+        </script>
+</body>
+
+</html>
